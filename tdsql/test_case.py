@@ -3,6 +3,7 @@ import re
 
 from tdsql.exception import InvalidSql, InvalidYaml
 from tdsql.test_config import TdsqlTestConfig
+from tdsql.client import BaseClient
 from tdsql import util
 
 class TdsqlTestCase():
@@ -13,9 +14,6 @@ class TdsqlTestCase():
     ):
         self.actual_sql = _replace_sql(sqlpath, replace)
         self.expected_sql = 'aaa'
-
-    def run(self, client, config: TdsqlTestConfig):
-        print(client, config)
 
 
 oneline_pattern = re.compile(r"^.*--\s*tdsql-line:\s*(\S+)\s*$")
