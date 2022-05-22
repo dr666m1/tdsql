@@ -12,7 +12,7 @@ class BaseClient(ABC):
 
 
 class BigQueryClient(BaseClient):
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def select(self, sql: str, config: TdsqlTestConfig) -> pd.DataFrame:

@@ -1,5 +1,6 @@
 from dataclasses import fields
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -22,8 +23,8 @@ def run(yamlpath: Path) -> None:
         print(actual, expected)
 
 
-def _detect_test_config(yamldict: dict) -> TdsqlTestConfig:
-    kwargs: dict = {}
+def _detect_test_config(yamldict: dict[str, Any]) -> TdsqlTestConfig:
+    kwargs: dict[str, Any] = {}
 
     for f in fields(TdsqlTestConfig):
         val = yamldict.get(f.name)
@@ -40,7 +41,7 @@ def _detect_test_config(yamldict: dict) -> TdsqlTestConfig:
     return TdsqlTestConfig(**kwargs)
 
 
-def _detect_test_cases(yamldict: dict) -> list[TdsqlTestCase]:
+def _detect_test_cases(yamldict: dict[str, Any]) -> list[TdsqlTestCase]:
     tests = yamldict.get("tests", [])
     return [TdsqlTestCase(t["filepath"], t["replace"]) for t in tests]
 
