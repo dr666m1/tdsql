@@ -4,19 +4,26 @@ version = "0.1.0"
 description = ""
 authors = ["dr666m1 <skndr666m1@gmail.com>"]
 
+[tool.poetry.scripts]
+tdsql = "tdsql.command:run"
+
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
 PyYAML = "^6.0"
-google-cloud-bigquery = "^3.1.0"
+google-cloud-bigquery = {version = "^3.1.0", optional = true}
+db-dtypes = {version = "^1.0.1", optional = true}
 pandas = "^1.4.2"
-# needed by google-cloud-bigquery
-db-dtypes = "^1.0.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"
 mypy = "^0.950"
 types-PyYAML = "^6.0.7"
 pandas-stubs = "^1.2.0"
+google-cloud-bigquery = {version = "^3.1.0", optional = false}
+db-dtypes = {version = "^1.0.1", optional = false}
+
+[tool.poetry.extras]
+bigquery = ["google-cloud-bigquery", "db-dtypes"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
