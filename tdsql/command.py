@@ -14,11 +14,10 @@ from tdsql import util
 
 
 def run(yamlpath: Path) -> None:
-    dict_ = yaml.safe_load(util.read_file(yamlpath))
-    test_config = _detect_test_config(dict_)
-    test_cases = _detect_test_cases(dict_)
+    test_config = _detect_test_config(yamlpath)
+    test_cases = _detect_test_cases(yamlpath)
     client_ = client.get_client(test_config)
-    result_dir = _make_result_dir()
+    result_dir = _make_result_dir(yamlpath.parent)
 
     for i, t in enumerate(test_cases):
         actual = client_.select(t.actual_sql)
@@ -31,7 +30,7 @@ def run(yamlpath: Path) -> None:
                 ignore_index=True
             )
             expected.sort_values(
-                by=list(actual.columns.values),
+                by=list(expected.columns.values),
                 inplace=True,
                 ignore_index=True
             )
@@ -48,36 +47,40 @@ def run(yamlpath: Path) -> None:
                 raise TdsqlAssertionError(f"""number of columns does not match
 actual: {actual_ncol}, expected {expected_ncol}""")
 
-            else:
-                actual_column_set = set(actual.columns.values)
-                expected_column_set = set(expected.columns.values)
+        else:
+            actual_column_set = set(actual.columns.values)
+            expected_column_set = set(expected.columns.values)
 
-                actual_only_set = actual_column_set - expected_column_set
-                expected_only_set = expected_column_set - actual_column_set
+            actual_only_set = actual_column_set - expected_column_set
+            expected_only_set = expected_column_set - actual_column_set
 
-                if len(actual_only_set) > 0:
-                    raise TdsqlAssertionError(
-                        f"{actual_only_set} only exsists in actual result"
-                    )
-                elif len(expected_only_set) > 0:
-                    raise TdsqlAssertionError(
-                        f"{expected_only_set} only exsists in expected result"
-                    )
+            if len(actual_only_set) > 0:
+                raise TdsqlAssertionError(
+                    f"{actual_only_set} only exsists in actual result"
+                )
+            elif len(expected_only_set) > 0:
+                raise TdsqlAssertionError(
+                    f"{expected_only_set} only exsists in expected result"
+                )
 
         for i in range(min(actual.shape[0], expected.shape[0])):
             actual_row = actual.iloc[i:i+1]
             expected_row = expected.iloc[i:i+1]
 
             if test_config.ignore_column_name:
-                for i in range(actual.shape[1]):
-                    actual_value = actual_row.iloc[0,i]
-                    expected_value = expected_row.iloc[0,i]
+                for c in range(actual.shape[1]):
+                    actual_value = actual_row.iloc[0,c]
+                    expected_value = expected_row.iloc[0,c]
                     if not _is_equal(
                         actual_value,
                         expected_value,
                         test_config.acceptable_error,
                     ):
-                        raise TdsqlAssertionError(f"at {i+1}th column")
+                        raise TdsqlAssertionError(
+                            f"value does not match at line: {i+1}, column: {c+1}\n"
+                            + f"actual: {actual_value}, expected: {expected_value}"
+                        )
+
             else:
                 for c in actual.columns.values:
                     actual_value = actual_row[c][0]
@@ -87,17 +90,21 @@ actual: {actual_ncol}, expected {expected_ncol}""")
                         expected_value,
                         test_config.acceptable_error,
                     ):
-                        raise TdsqlAssertionError(f"at {i+1}th column")
+                        raise TdsqlAssertionError(
+                            f"value does not match at line: {i+1}, column: {c}\n"
+                            + f"actual: {actual_value}, expected: {expected_value}"
+                        )
 
         if actual.shape[0] > expected.shape[0]:
             raise TdsqlAssertionError("actual result is longer than expected result")
         elif actual.shape[0] < expected.shape[0]:
             raise TdsqlAssertionError("expected result is longer than actual result")
 
-        logger.info("all tests passed")
+        logger.info("all tests passed🎉")
 
 
-def _detect_test_config(yamldict: dict[str, Any]) -> TdsqlTestConfig:
+def _detect_test_config(yamlpath: Path) -> TdsqlTestConfig:
+    yamldict = yaml.safe_load(util.read(yamlpath))
     kwargs: dict[str, Any] = {}
 
     for f in fields(TdsqlTestConfig):
@@ -117,18 +124,22 @@ def _detect_test_config(yamldict: dict[str, Any]) -> TdsqlTestConfig:
     return TdsqlTestConfig(**kwargs)
 
 
-def _detect_test_cases(yamldict: dict[str, Any]) -> list[TdsqlTestCase]:
+def _detect_test_cases(yamlpath: Path) -> list[TdsqlTestCase]:
+    yamldict = yaml.safe_load(util.read(yamlpath))
     tests = yamldict.get("tests", [])
-    return [TdsqlTestCase(t["filepath"], t["replace"]) for t in tests]
+
+    return [
+        TdsqlTestCase(
+            yamlpath.parent / t["filepath"],
+            t.get("replace", {}),
+            t["expected"]
+        ) for t in tests
+    ]
 
 
-def _make_result_dir() -> Path:
-    dir_ = Path(".tdsql_log")
-    os.makedirs(dir_, exist_ok=True)
-
-    with open(dir_ / ".gitignore", "w") as f:
-        f.write("# created by tdsql\n*")
-
+def _make_result_dir(dir_: Path) -> Path:
+    os.makedirs(dir_ / ".tdsql_log", exist_ok=True)
+    util.write(dir_ / ".gitignore", "# created by tdsql\n*")
     return dir_
 
 

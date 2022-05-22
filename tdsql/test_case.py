@@ -8,11 +8,12 @@ class TdsqlTestCase():
     def __init__(
         self,
         sqlpath: Path,
-        replace: dict[str, str]
+        replace: dict[str, str],
+        expected: str,
     ):
         self.sqlpath = sqlpath
         self.actual_sql = _replace_sql(sqlpath, replace)
-        self.expected_sql = 'aaa'
+        self.expected_sql = expected
 
 
 oneline_pattern = re.compile(r"^.*--\s*tdsql-line:\s*(\S+)\s*$")
@@ -20,7 +21,7 @@ start_pattern = re.compile(r"^.*--\s*tdsql-start:\s*(\S+)\s*$")
 end_pattern = re.compile(r"^.*--\s*tdsql-end:\s*(\S+)\s*$")
 
 def _replace_sql(sqlpath: Path, replace: dict[str, str]) -> str:
-    original_sql = util.read_file(sqlpath)
+    original_sql = util.read(sqlpath)
     original_sql_lines = original_sql.splitlines()
 
     # check where to replace
