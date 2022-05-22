@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from google.cloud import bigquery
 import pandas as pd
 
 from tdsql.exception import InvalidYaml
@@ -7,21 +8,38 @@ from tdsql.test_config import TdsqlTestConfig
 
 class BaseClient(ABC):
     @abstractmethod
-    def select(self, sql: str, config: TdsqlTestConfig) -> pd.DataFrame:
+    def select(self, sql: str) -> pd.DataFrame:
         pass
 
 
 class BigQueryClient(BaseClient):
-    def __init__(self) -> None:
-        pass
+    def __init__(self, config: TdsqlTestConfig) -> None:
+        self.config = config
 
-    def select(self, sql: str, config: TdsqlTestConfig) -> pd.DataFrame:
-        print(sql, config)
-        return pd.DataFrame()
+        query_job_config = bigquery.QueryJobConfig(
+            maximum_bytes_billed=config.max_bytes_billed,
+            use_legacy_sql=False,
+        )
+
+        # See https://googleapis.dev/python/google-api-core/latest/auth.html#authentication
+        self.client = bigquery.Client(
+            default_query_job_config=query_job_config,
+        )
+
+    def select(self, sql: str) -> pd.DataFrame:
+        df = self.client.query(sql).to_dataframe()
+
+        if self.config.auto_sort:
+            df.sort_values(
+                by=list(df.columns.values),
+                inplace=True,
+            )
+
+        return df
 
 
-def get_client(database: str) -> BaseClient:
-    if database == "bigquery":
-        return BigQueryClient()
+def get_client(config: TdsqlTestConfig) -> BaseClient:
+    if config.database == "bigquery":
+        return BigQueryClient(config)
     else:
-        raise InvalidYaml(f"{database} is not supported")
+        raise InvalidYaml(f"{config.database} is not supported")

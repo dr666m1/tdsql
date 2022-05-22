@@ -14,11 +14,11 @@ def run(yamlpath: Path) -> None:
     dict_ = yaml.safe_load(util.read_file(yamlpath))
     test_config = _detect_test_config(dict_)
     test_cases = _detect_test_cases(dict_)
-    client_ = client.get_client(test_config.database)
+    client_ = client.get_client(test_config)
 
     for t in test_cases:
-        actual = client_.select(t.actual_sql, test_config)
-        expected = client_.select(t.expected_sql, test_config)
+        actual = client_.select(t.actual_sql)
+        expected = client_.select(t.expected_sql)
 
         print(actual, expected)
 
