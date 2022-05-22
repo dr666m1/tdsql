@@ -1,9 +1,5 @@
-class InvalidSql(Exception):
-    """Raised when sql file has a problem"""
-
-
-class InvalidYaml(Exception):
-    """Raised when yaml file has a problem"""
+class InvalidInputError(Exception):
+    """Raised when sql or yaml file has a problem"""
 
 
 class TdsqlAssertionError(Exception):

@@ -1,7 +1,7 @@
 from pathlib import Path
 import re
 
-from tdsql.exception import InvalidSql, InvalidYaml
+from tdsql.exception import InvalidInputError
 from tdsql import util
 
 class TdsqlTestCase():
@@ -30,7 +30,7 @@ def _replace_sql(sqlpath: Path, replace: dict[str, str]) -> str:
         if match_ is not None:
             ident = match_.group(1)
             if position.get(ident) is not None:
-                raise InvalidSql(f"{sqlpath}: `{ident}` appear twice at line {i+1}")
+                raise InvalidInputError(f"{sqlpath}: `{ident}` appear twice at line {i+1}")
             position[ident] = (i, i)
             continue
 
@@ -38,7 +38,7 @@ def _replace_sql(sqlpath: Path, replace: dict[str, str]) -> str:
         if match_ is not None:
             ident = match_.group(1)
             if position.get(ident) is not None:
-                raise InvalidSql(f"{sqlpath}: `{ident}` appear twice at line {i+1}")
+                raise InvalidInputError(f"{sqlpath}: `{ident}` appear twice at line {i+1}")
             position[ident] = (i, -1)
             continue
 
@@ -46,13 +46,17 @@ def _replace_sql(sqlpath: Path, replace: dict[str, str]) -> str:
         if match_ is not None:
             ident = match_.group(1)
             if position.get(ident) is None:
-                raise InvalidSql(f"{sqlpath}: `{ident}` has not started but ends at line {i+1}")
+                raise InvalidInputError(
+                    f"{sqlpath}: `{ident}` has not started but ends at line {i+1}"
+                )
             position[ident] = (position[ident][0], i)
             continue
 
     for k, v in position.items():
         if v[1] == -1:
-            raise InvalidSql(f"{sqlpath}: `{k}` started at line {v[0]+1} but it does not end")
+            raise InvalidInputError(
+                f"{sqlpath}: `{k}` started at line {v[0]+1} but it does not end"
+            )
 
     # exec replacement
     replaced_sql_lines: list[str|None] = original_sql_lines.copy() # type: ignore
@@ -60,11 +64,11 @@ def _replace_sql(sqlpath: Path, replace: dict[str, str]) -> str:
 
     for ident, text in replace.items():
         if ident not in position.keys():
-            raise InvalidYaml(f"`{ident}` does not appear in sql")
+            raise InvalidInputError(f"{sqlpath}: `{ident}` does not appear")
 
         for i in range(position[ident][0], position[ident][1]+1):
             if i in collision_check:
-                raise InvalidYaml(f"{sqlpath}: cannot replace line {i} twice")
+                raise InvalidInputError(f"{sqlpath}: cannot replace line {i+1} twice")
             else:
                 collision_check.add(i)
 
@@ -80,7 +84,9 @@ def _replace_sql(sqlpath: Path, replace: dict[str, str]) -> str:
                     + text_lines[i+1:]
                 )
             else:
-                raise InvalidYaml(f"Only `this` is allowed here but got `{ident}`")
+                raise InvalidInputError(
+                    f"only `-- tdsql-line: this` is allowed but got `{ident}`"
+                )
 
         start, end = position[ident]
         replaced_sql_lines[start] = text
