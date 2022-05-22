@@ -27,15 +27,7 @@ class BigQueryClient(BaseClient):
         )
 
     def select(self, sql: str) -> pd.DataFrame:
-        df = self.client.query(sql).to_dataframe()
-
-        if self.config.auto_sort:
-            df.sort_values(
-                by=list(df.columns.values),
-                inplace=True,
-            )
-
-        return df
+        return self.client.query(sql).to_dataframe()
 
 
 def get_client(config: TdsqlTestConfig) -> BaseClient:

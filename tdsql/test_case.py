@@ -2,8 +2,6 @@ from pathlib import Path
 import re
 
 from tdsql.exception import InvalidSql, InvalidYaml
-from tdsql.test_config import TdsqlTestConfig
-from tdsql.client import BaseClient
 from tdsql import util
 
 class TdsqlTestCase():
@@ -12,6 +10,7 @@ class TdsqlTestCase():
         sqlpath: Path,
         replace: dict[str, str]
     ):
+        self.sqlpath = sqlpath
         self.actual_sql = _replace_sql(sqlpath, replace)
         self.expected_sql = 'aaa'
 
