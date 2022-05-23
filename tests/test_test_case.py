@@ -5,14 +5,11 @@ import pytest
 from tdsql import test_case
 from tdsql.exception import InvalidInputError
 
+
 @pytest.mark.parametrize(
     "sql,replace,expected",
     [
-        (
-            "SELECT 1 -- tdsql-line: test",
-            {"test": "SELECT 2"},
-            "SELECT 2"
-        ),
+        ("SELECT 1 -- tdsql-line: test", {"test": "SELECT 2"}, "SELECT 2"),
         (
             """
 SELECT
@@ -24,7 +21,7 @@ SELECT
             """
 SELECT
 2 AS two
-""".strip()
+""".strip(),
         ),
         (
             """
@@ -40,7 +37,7 @@ SELECT 1
 ;
 """.strip(),
         ),
-    ]
+    ],
 )
 def test_replace_sql(sql: str, replace: dict[str, str], expected: str):
     with NamedTemporaryFile(mode="w") as f:
@@ -103,7 +100,7 @@ SELECT
             "SELECT 1 -- tdsql-line: test",
             {"test": "-- tdsql-line: test"},
         ),
-    ]
+    ],
 )
 def test_replace_sql_err(msg: str, sql: str, replace: dict[str, str]):
     with NamedTemporaryFile(mode="w") as f:

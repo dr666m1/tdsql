@@ -1,7 +1,8 @@
 from pathlib import Path
 
+
 def read(filepath: Path) -> str:
-    with open(filepath, 'r') as file:
+    with open(filepath, "r") as file:
         res = file.read()
     return res
 

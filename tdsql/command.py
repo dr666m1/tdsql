@@ -25,14 +25,10 @@ def run(yamlpath: Path) -> None:
 
         if test_config.auto_sort:
             actual.sort_values(
-                by=list(actual.columns.values),
-                inplace=True,
-                ignore_index=True
+                by=list(actual.columns.values), inplace=True, ignore_index=True
             )
             expected.sort_values(
-                by=list(expected.columns.values),
-                inplace=True,
-                ignore_index=True
+                by=list(expected.columns.values), inplace=True, ignore_index=True
             )
 
         if test_config.save_result:
@@ -44,8 +40,10 @@ def run(yamlpath: Path) -> None:
             expected_ncol = len(expected.columns)
 
             if actual_ncol != expected_ncol:
-                raise TdsqlAssertionError(f"""number of columns does not match
-actual: {actual_ncol}, expected {expected_ncol}""")
+                raise TdsqlAssertionError(
+                    f"number of columns does not match\n"
+                    + "actual: {actual_ncol}, expected {expected_ncol}"
+                )
 
         else:
             actual_column_set = set(actual.columns.values)
@@ -64,13 +62,13 @@ actual: {actual_ncol}, expected {expected_ncol}""")
                 )
 
         for i in range(min(actual.shape[0], expected.shape[0])):
-            actual_row = actual.iloc[i:i+1]
-            expected_row = expected.iloc[i:i+1]
+            actual_row = actual.iloc[i : i + 1]
+            expected_row = expected.iloc[i : i + 1]
 
             if test_config.ignore_column_name:
                 for c in range(actual.shape[1]):
-                    actual_value = actual_row.iloc[0,c]
-                    expected_value = expected_row.iloc[0,c]
+                    actual_value = actual_row.iloc[0, c]
+                    expected_value = expected_row.iloc[0, c]
                     if not _is_equal(
                         actual_value,
                         expected_value,
@@ -130,10 +128,9 @@ def _detect_test_cases(yamlpath: Path) -> list[TdsqlTestCase]:
 
     return [
         TdsqlTestCase(
-            yamlpath.parent / t["filepath"],
-            t.get("replace", {}),
-            t["expected"]
-        ) for t in tests
+            yamlpath.parent / t["filepath"], t.get("replace", {}), t["expected"]
+        )
+        for t in tests
     ]
 
 
@@ -148,9 +145,8 @@ def _is_equal(actual: Any, expected: Any, acceptable_error: float) -> bool:
         return False
 
     if isinstance(actual, float):
-        return (
-            expected * (1 - acceptable_error) <= actual
-            and actual <= expected * (1 + acceptable_error)
+        return expected * (1 - acceptable_error) <= actual and actual <= expected * (
+            1 + acceptable_error
         )
 
     return actual == expected

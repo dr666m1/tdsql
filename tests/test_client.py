@@ -3,6 +3,7 @@ import pytest
 from tdsql import client
 from tdsql.test_config import TdsqlTestConfig
 
+
 @pytest.mark.parametrize(
     "database",
     ["bigquery"],
@@ -12,4 +13,3 @@ def test_select(database: str):
     df = client_.select("SELECT 1 AS i;")
 
     assert df["i"].values[0] == 1
-

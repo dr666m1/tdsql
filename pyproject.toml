@@ -21,6 +21,7 @@ types-PyYAML = "^6.0.7"
 pandas-stubs = "^1.2.0"
 google-cloud-bigquery = {version = "^3.1.0", optional = false}
 db-dtypes = {version = "^1.0.1", optional = false}
+black = "^22.3.0"
 
 [tool.poetry.extras]
 bigquery = ["google-cloud-bigquery", "db-dtypes"]

@@ -9,6 +9,7 @@ from tdsql.exception import TdsqlAssertionError
 from tdsql import command
 from tdsql import util
 
+
 @pytest.mark.parametrize(
     "yamlstr,expected",
     [
@@ -17,7 +18,7 @@ from tdsql import util
             """
 database: bigquery
 """,
-            TdsqlTestConfig(database="bigquery")
+            TdsqlTestConfig(database="bigquery"),
         ),
         (
             # arithmetic operation
@@ -25,12 +26,9 @@ database: bigquery
 database: bigquery
 max_bytes_billed: '1024 ** 3'
 """,
-            TdsqlTestConfig(
-                database="bigquery",
-                max_bytes_billed=1024 ** 3
-            )
+            TdsqlTestConfig(database="bigquery", max_bytes_billed=1024**3),
         ),
-    ]
+    ],
 )
 def test_detect_test_config(yamlstr: str, expected: TdsqlTestConfig):
     with tempfile.NamedTemporaryFile(mode="w") as f:
@@ -46,8 +44,7 @@ def test_detect_test_config(yamlstr: str, expected: TdsqlTestConfig):
     [
         # most simple
         (
-            r"value does not match at line: 1, column: 1\n"
-            + r"actual: 2, expected: 1",
+            r"value does not match at line: 1, column: 1\n" + r"actual: 2, expected: 1",
             """
 database: bigquery
 ignore_column_name: true
@@ -57,7 +54,7 @@ tests:
 """,
             """
 SELECT 2
-"""
+""",
         ),
         # auto_sort
         (
@@ -75,7 +72,7 @@ tests:
             """
 SELECT 2 AS num UNION ALL
 SELECT 1
-"""
+""",
         ),
         # column does not match
         (
@@ -90,7 +87,7 @@ tests:
 """,
             """
 SELECT 1, 2
-"""
+""",
         ),
         (
             r"\{'two'\} only exsists in actual result",
@@ -102,7 +99,7 @@ tests:
 """,
             """
 SELECT 1 AS one, 2 AS two
-"""
+""",
         ),
         (
             r"\{'two'\} only exsists in expected result",
@@ -114,7 +111,7 @@ tests:
 """,
             """
 SELECT 1 AS one
-"""
+""",
         ),
         # equality
         (
@@ -128,7 +125,7 @@ tests:
 """,
             """
 SELECT 1 AS one -- type does not match
-"""
+""",
         ),
         (
             r"value does not match at line: 1, column: col\n"
@@ -144,7 +141,7 @@ tests:
 """,
             """
 SELECT 1.0 AS col
-"""
+""",
         ),
         # number of rows does not match
         (
@@ -158,7 +155,7 @@ tests:
             """
 SELECT 1 AS col UNION ALL
 SELECT 2
-"""
+""",
         ),
         (
             "expected result is longer than actual result",
@@ -172,14 +169,14 @@ tests:
 """,
             """
 SELECT 1 AS col
-"""
+""",
         ),
-    ]
+    ],
 )
 def test_run_err(msg: str, yamlstr: str, sqlstr: str):
     with tempfile.TemporaryDirectory() as dirname:
-        util.write(Path(dirname)/"tdsql.yaml", yamlstr)
-        util.write(Path(dirname)/"tdsql.sql", sqlstr)
+        util.write(Path(dirname) / "tdsql.yaml", yamlstr)
+        util.write(Path(dirname) / "tdsql.sql", sqlstr)
 
         with pytest.raises(TdsqlAssertionError, match=msg):
-            command.run(Path(dirname)/"tdsql.yaml")
+            command.run(Path(dirname) / "tdsql.yaml")
