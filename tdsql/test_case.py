@@ -99,4 +99,4 @@ def _replace_sql(sqlpath: Path, replace: dict[str, str]) -> str:
         for i in range(start, end):
             replaced_sql_lines[i + 1] = None
 
-    return "\n".join([l for l in replaced_sql_lines if l is not None])
+    return "\n".join([line for line in replaced_sql_lines if line is not None])

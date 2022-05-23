@@ -14,7 +14,7 @@ class BigQueryClient(BaseClient):
             use_legacy_sql=False,
         )
 
-        # See https://googleapis.dev/python/google-api-core/latest/auth.html#authentication
+        # See https://googleapis.dev/python/google-api-core/latest/auth.html#authentication # noqa
         self.client = bigquery.Client(
             default_query_job_config=query_job_config,
         )
