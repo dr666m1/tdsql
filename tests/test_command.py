@@ -7,6 +7,7 @@ from tdsql.test_config import TdsqlTestConfig
 from tdsql.exception import TdsqlAssertionError
 from tdsql import command
 from tdsql import util
+from tdsql import client
 
 
 @pytest.mark.parametrize(
@@ -67,6 +68,29 @@ tests:
             """
 SELECT 1 UNION ALL SELECT 3
 """,
+        ),
+        # invalid query
+        (
+            r"invalid query\nSELECT foo",
+            """
+database: bigquery
+tests:
+  - filepath: ./tdsql.sql
+    expected: SELECT foo
+""",
+            """
+SELECT 1
+""",
+        ),
+        (
+            r"invalid query\nSELECT foo",
+            """
+database: bigquery
+tests:
+  - filepath: ./tdsql.sql
+    expected: SELECT 1
+""",
+            "SELECT foo",
         ),
         # auto_sort
         (
@@ -198,10 +222,27 @@ SELECT 1 AS col
         ),
     ],
 )
-def test_run_err(msg: str, yamlstr: str, sqlstr: str) -> None:
+def test_compare_results(msg: str, yamlstr: str, sqlstr: str) -> None:
     with tempfile.TemporaryDirectory() as dirname:
-        util.write(Path(dirname) / "tdsql.yaml", yamlstr)
-        util.write(Path(dirname) / "tdsql.sql", sqlstr)
+        yamlpath = Path(dirname) / "tdsql.yaml"
+        sqlpath = Path(dirname) / "tdsql.sql"
+
+        util.write(yamlpath, yamlstr)
+        util.write(sqlpath, sqlstr)
+
+        test_config = command._detect_test_config(yamlpath)
+        test_cases = command._detect_test_cases(yamlpath)
+        client_ = client.get_client(test_config)
 
         with pytest.raises(TdsqlAssertionError, match=msg):
-            command.run(Path(dirname) / "tdsql.yaml")
+            for t in test_cases:
+                try:
+                    t.actual_sql_result = client_.select(t.actual_sql)
+                except Exception as e:
+                    t.actual_sql_result = e
+                try:
+                    t.expected_sql_result = client_.select(t.expected_sql)
+                except Exception as e:
+                    t.expected_sql_result = e
+
+                command._compare_results(t, test_config)

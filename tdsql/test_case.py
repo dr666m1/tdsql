@@ -1,11 +1,16 @@
 from pathlib import Path
+from typing import ClassVar
 import re
+
+import pandas as pd
 
 from tdsql.exception import InvalidInputError
 from tdsql import util
 
 
 class TdsqlTestCase:
+    cnt: ClassVar[int] = 0
+
     def __init__(
         self,
         sqlpath: Path,
@@ -15,6 +20,10 @@ class TdsqlTestCase:
         self.sqlpath = sqlpath
         self.actual_sql = _replace_sql(sqlpath, replace)
         self.expected_sql = expected
+        self.actual_sql_result: pd.DataFrame | Exception | None = None
+        self.expected_sql_result: pd.DataFrame | Exception | None = None
+        self.__class__.cnt += 1
+        self.id: int = self.__class__.cnt
 
 
 oneline_pattern = re.compile(r"^.*--\s*tdsql-line:\s*(\S+)\s*$")

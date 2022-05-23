@@ -4,3 +4,7 @@ class InvalidInputError(Exception):
 
 class TdsqlAssertionError(Exception):
     """Raised when actual result and expected result do not match"""
+
+
+class TdsqlInternalError(Exception):
+    """Raised when unnexpected error is detected"""
