@@ -15,4 +15,4 @@ jobs:
           poetry install
       - run: |
           poetry env use "3.10"
-          poetry run pytest
+          poetry run python --version
