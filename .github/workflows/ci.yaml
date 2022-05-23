@@ -61,14 +61,16 @@ jobs:
       # clean up authentication
       - run: rm ${{ steps.auth.outputs.credentials_file_path }}
 
-      - run: poetry build
+      - name: build
+        run: poetry build
 
       - uses: actions/upload-artifact@v3
         with:
           name: package
           path: ./dist
 
-      - run: poetry publish -r testpypi --username dr666m1 --password "$PYPI_PASSWORD"
+      - name: publish
+        run: poetry publish -r testpypi --username dr666m1 --password "$PYPI_PASSWORD"
         if: ${{ github.ref_type == 'tag' }}
         env:
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
