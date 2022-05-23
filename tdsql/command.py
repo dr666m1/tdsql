@@ -42,7 +42,7 @@ def run(yamlpath: Path) -> None:
             if actual_ncol != expected_ncol:
                 raise TdsqlAssertionError(
                     "number of columns does not match\n"
-                    + "actual: {actual_ncol}, expected {expected_ncol}"
+                    + f"actual: {actual_ncol}, expected {expected_ncol}"
                 )
 
         else:
