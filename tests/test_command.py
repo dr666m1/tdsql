@@ -29,7 +29,7 @@ max_bytes_billed: '1024 ** 3'
         ),
     ],
 )
-def test_detect_test_config(yamlstr: str, expected: TdsqlTestConfig):
+def test_detect_test_config(yamlstr: str, expected: TdsqlTestConfig) -> None:
     with tempfile.NamedTemporaryFile(mode="w") as f:
         f.write(yamlstr)
         f.seek(0)
@@ -172,7 +172,7 @@ SELECT 1 AS col
         ),
     ],
 )
-def test_run_err(msg: str, yamlstr: str, sqlstr: str):
+def test_run_err(msg: str, yamlstr: str, sqlstr: str) -> None:
     with tempfile.TemporaryDirectory() as dirname:
         util.write(Path(dirname) / "tdsql.yaml", yamlstr)
         util.write(Path(dirname) / "tdsql.sql", sqlstr)

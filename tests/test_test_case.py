@@ -39,7 +39,7 @@ SELECT 1
         ),
     ],
 )
-def test_replace_sql(sql: str, replace: dict[str, str], expected: str):
+def test_replace_sql(sql: str, replace: dict[str, str], expected: str) -> None:
     with NamedTemporaryFile(mode="w") as f:
         f.write(sql)
         f.seek(0)
@@ -102,7 +102,7 @@ SELECT
         ),
     ],
 )
-def test_replace_sql_err(msg: str, sql: str, replace: dict[str, str]):
+def test_replace_sql_err(msg: str, sql: str, replace: dict[str, str]) -> None:
     with NamedTemporaryFile(mode="w") as f:
         f.write(sql)
         f.seek(0)

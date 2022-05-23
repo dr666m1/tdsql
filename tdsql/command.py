@@ -1,6 +1,6 @@
 from dataclasses import fields
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 import os
 
 import yaml
@@ -140,13 +140,14 @@ def _make_result_dir(dir_: Path) -> Path:
     return dir_
 
 
-def _is_equal(actual: Any, expected: Any, acceptable_error: float) -> bool:
-    if type(actual) != type(expected):
-        return False
+T = TypeVar("T")
 
-    if isinstance(actual, float):
-        return expected * (1 - acceptable_error) <= actual and actual <= expected * (
-            1 + acceptable_error
+
+def _is_equal(actual: T, expected: T, acceptable_error: float) -> bool:
+    if isinstance(actual, float) and isinstance(expected, float):
+        return (
+            expected * (1 - acceptable_error)
+            <= actual
+            <= expected * (1 + acceptable_error)
         )
-
     return actual == expected

@@ -8,7 +8,7 @@ from tdsql.test_config import TdsqlTestConfig
     "database",
     ["bigquery"],
 )
-def test_select(database: str):
+def test_select(database: str) -> None:
     client_ = client.get_client(TdsqlTestConfig(database=database))
     df = client_.select("SELECT 1 AS i;")
 
