@@ -1,6 +1,6 @@
 on: [push]
 jobs:
-  test:
+  ci:
     runs-on: ubuntu-latest
     permissions:
       # needed for OIDC
@@ -47,7 +47,8 @@ jobs:
           black --check .
 
       # See https://github.com/google-github-actions/auth
-      - uses: google-github-actions/auth@v0
+      - id: auth
+        uses: google-github-actions/auth@v0
         with:
           workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.SERVICE_ACCOUNT }}
@@ -56,3 +57,18 @@ jobs:
         run: |
           source .venv/bin/activate
           pytest
+
+      # clean up authentication
+      - run: rm ${{ steps.auth.outputs.credentials_file_path }}
+
+      - run: poetry build
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: package
+          path: ./dist
+
+      - run: poetry publish -r testpypi --username dr666m1 --password "$PYPI_PASSWORD"
+        if: ${{ github.ref_type == 'tag' }}
+        env:
+          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
