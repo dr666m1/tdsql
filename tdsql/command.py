@@ -13,6 +13,22 @@ from tdsql import client
 from tdsql import util
 
 
+def main() -> None:
+    # TODO parse command line arguments
+    yamlpath = Path("tdsql.yaml")
+    ymlpath = Path("tdsql.yml")
+
+    if yamlpath.is_file():
+        run(yamlpath)
+
+    elif ymlpath.is_file():
+        run(ymlpath)
+
+    else:
+        logger.error("tdsql.yaml is not found")
+        exit(code=1)
+
+
 def run(yamlpath: Path) -> None:
     test_config = _detect_test_config(yamlpath)
     test_cases = _detect_test_cases(yamlpath)
@@ -32,8 +48,10 @@ def run(yamlpath: Path) -> None:
             )
 
         if test_config.save_result:
-            actual.to_csv(result_dir / f"{t.sqlpath.stem}_actual_{i}.csv")
-            expected.to_csv(result_dir / f"{t.sqlpath.stem}_expected_{i}.csv")
+            actual.to_csv(result_dir / f"{t.sqlpath.stem}_actual_{i}.csv", index=False)
+            expected.to_csv(
+                result_dir / f"{t.sqlpath.stem}_expected_{i}.csv", index=False
+            )
 
         if test_config.ignore_column_name:
             actual_ncol = len(actual.columns)
@@ -156,18 +174,3 @@ def _is_equal(actual: Any, expected: Any, acceptable_error: float) -> bool:
     else:
         res = actual == expected
         return res
-
-
-if __name__ == "__main__":
-    yamlpath = Path("tdsql.yaml")
-    ymlpath = Path("tdsql.yml")
-
-    if yamlpath.is_file():
-        run(yamlpath)
-
-    elif ymlpath.is_file():
-        run(ymlpath)
-
-    else:
-        logger.error("tdsql.yaml is not found")
-        exit(code=1)

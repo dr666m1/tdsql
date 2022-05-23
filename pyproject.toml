@@ -5,7 +5,7 @@ description = "Minimum test flamework for sql"
 authors = ["dr666m1 <skndr666m1@gmail.com>"]
 
 [tool.poetry.scripts]
-tdsql = "tdsql.command:run"
+tdsql = "tdsql.command:main"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
