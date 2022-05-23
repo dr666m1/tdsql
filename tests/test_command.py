@@ -43,7 +43,7 @@ def test_detect_test_config(yamlstr: str, expected: TdsqlTestConfig) -> None:
     [
         # most simple
         (
-            r"value does not match at line: 1, column: 1\n" + r"actual: 2, expected: 1",
+            r"value does not match at line: 1, column: 1\nactual: 2, expected: 1",
             """
 database: bigquery
 ignore_column_name: true
@@ -53,6 +53,19 @@ tests:
 """,
             """
 SELECT 2
+""",
+        ),
+        (
+            r"value does not match at line: 2, column: 1\nactual: 3, expected: 2",
+            """
+database: bigquery
+ignore_column_name: true
+tests:
+  - filepath: ./tdsql.sql
+    expected: SELECT 1 UNION ALL SELECT 2
+""",
+            """
+SELECT 1 UNION ALL SELECT 3
 """,
         ),
         # auto_sort
@@ -140,6 +153,19 @@ tests:
 """,
             """
 SELECT 1.0 AS col
+""",
+        ),
+        (
+            r"value does not match at line: 1, column: col\n"
+            + r"actual: 1, expected: <NA>",
+            """
+database: bigquery
+tests:
+  - filepath: ./tdsql.sql
+    expected: SELECT NULL AS col
+""",
+            """
+SELECT 1 AS col
 """,
         ),
         # number of rows does not match

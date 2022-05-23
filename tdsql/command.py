@@ -4,6 +4,7 @@ from typing import Any
 import os
 
 import yaml
+import pandas as pd
 
 from tdsql.test_config import TdsqlTestConfig
 from tdsql.test_case import TdsqlTestCase
@@ -80,13 +81,10 @@ def run(yamlpath: Path) -> None:
                 )
 
         for i in range(min(actual.shape[0], expected.shape[0])):
-            actual_row = actual.iloc[i : i + 1]
-            expected_row = expected.iloc[i : i + 1]
-
             if test_config.ignore_column_name:
                 for c in range(actual.shape[1]):
-                    actual_value = actual_row.iloc[0, c]
-                    expected_value = expected_row.iloc[0, c]
+                    actual_value = actual.iloc[i, c]
+                    expected_value = expected.iloc[i, c]
                     if not _is_equal(
                         actual_value,
                         expected_value,
@@ -99,8 +97,8 @@ def run(yamlpath: Path) -> None:
 
             else:
                 for c in actual.columns.values:
-                    actual_value = actual_row[c][0]
-                    expected_value = expected_row[c][0]
+                    actual_value = actual[c][i]
+                    expected_value = expected[c][i]
                     if not _is_equal(
                         actual_value,
                         expected_value,
@@ -162,6 +160,9 @@ def _make_result_dir(dir_: Path) -> Path:
 def _is_equal(actual: Any, expected: Any, acceptable_error: float) -> bool:
     if type(actual) != type(expected):
         return False
+
+    elif pd.isna(actual):
+        return pd.isna(expected)
 
     elif isinstance(actual, float):
         res: bool = (
