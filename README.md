@@ -17,16 +17,16 @@ database: bigquery
 tests:
   - filepath: ./hello-world.sql
     replace:
-      - data: |
-          SELECT * FROM UNNEST([
-            STRUCT('2020-01-01' AS dt, 100 AS id),
-            STRUCT('2020-01-01', 100),
-            STRUCT('2020-01-01', 200)
-          ])
-      - master: |
-          FROM (
-            SELECT 100 AS id, 1 AS category
-          )
+      data: |
+        SELECT * FROM UNNEST([
+          STRUCT('2020-01-01' AS dt, 100 AS id),
+          STRUCT('2020-01-01', 100),
+          STRUCT('2020-01-01', 200)
+        ])
+      master: |
+        FROM (
+          SELECT 100 AS id, 1 AS category
+        )
     expected: |
       SELECT * FROM UNNEST([
         STRUCT('2020-01-01' AS dt, 1 AS category, 2 AS cnt),
@@ -49,8 +49,8 @@ SELECT
   dt,
   category,
   COUNT(*) AS cnt
-FROM data INNER JOIN master
-GROUP BY 1
+FROM data INNER JOIN master USING(id)
+GROUP BY 1, 2
 ```
 
 Then, run this command.
@@ -65,8 +65,8 @@ you won't see any error message this time.
 
 ```diff
 # ./hello-world.sql
-- FROM data INNER JOIN master
-+ FROM data LEFT JOIN master
+- FROM data INNER JOIN master USING(id)
++ FROM data LEFT JOIN master USING(id)
 ```
 
 Quite simple, isn't it?

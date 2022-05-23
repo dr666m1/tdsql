@@ -135,9 +135,10 @@ def _detect_test_cases(yamlpath: Path) -> list[TdsqlTestCase]:
 
 
 def _make_result_dir(dir_: Path) -> Path:
-    os.makedirs(dir_ / ".tdsql_log", exist_ok=True)
-    util.write(dir_ / ".gitignore", "# created by tdsql\n*")
-    return dir_
+    result_dir = dir_ / ".tdsql_log"
+    os.makedirs(result_dir, exist_ok=True)
+    util.write(result_dir / ".gitignore", "# created by tdsql\n*")
+    return result_dir
 
 
 def _is_equal(actual: Any, expected: Any, acceptable_error: float) -> bool:
