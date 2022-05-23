@@ -41,6 +41,11 @@ jobs:
           source .venv/bin/activate
           flake8
 
+      - name: black
+        run: |
+          source .venv/bin/activate
+          black --check .
+
       # See https://github.com/google-github-actions/auth
       - uses: google-github-actions/auth@v0
         with:
