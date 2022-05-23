@@ -4,7 +4,7 @@ WIP
 ## Install
 Currently, only bigquery is supported.
 
-```
+```bash
 pip install tdsql[bigquery]
 ```
 
@@ -51,7 +51,6 @@ SELECT
   COUNT(*) AS cnt
 FROM data INNER JOIN master
 GROUP BY 1
-;
 ```
 
 Then, run this command.
@@ -61,12 +60,11 @@ You'll see an error message.
 tdsql
 ```
 
-Fix the sql and run `tdsql` again,
+Fix `hello-world.sql` and run `tdsql` again,
 you won't see any error message this time.
 
 ```diff
 # ./hello-world.sql
-
 - FROM data INNER JOIN master
 + FROM data LEFT JOIN master
 ```
