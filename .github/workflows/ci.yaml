@@ -39,7 +39,7 @@ jobs:
       - name: flake8
         run: |
           source .venv/bin/activate
-          flake8
+          flake8 ./tdsql ./tests
 
       - name: black
         run: |
