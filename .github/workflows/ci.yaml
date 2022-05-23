@@ -3,13 +3,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      # See https://github.com/actions/setup-python/issues/374
       - uses: actions/checkout@v3
       - run: pipx install poetry
       - uses: actions/setup-python@v3
         with:
           python-version: '3.10'
           cache: 'poetry'
-      - run: poetry install
       - run: |
-          poetry shell
-          pytest
+          poetry env use "3.10"
+          poetry install
+      - run: |
+          poetry env use "3.10"
+          poetry run pytest
