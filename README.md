@@ -35,7 +35,7 @@ tests:
 ```
 
 ```sql
-# ./hello-world.sql
+-- ./hello-world.sql
 WITH data AS (
   -- tdsql-start: data
   SELECT dt, id
@@ -64,7 +64,7 @@ Fix `hello-world.sql` and run `tdsql` again,
 you won't see any error message this time.
 
 ```diff
-# ./hello-world.sql
+-- ./hello-world.sql
 - FROM data INNER JOIN master USING(id)
 + FROM data LEFT JOIN master USING(id)
 ```
