@@ -39,7 +39,9 @@ SELECT 1
         ),
     ],
 )
-def test_replace_sql(sqlstr: str, replace: dict[str, str], expected: str, tmp_path: Path) -> None:
+def test_replace_sql(
+    sqlstr: str, replace: dict[str, str], expected: str, tmp_path: Path
+) -> None:
     sqlpath = tmp_path / "tdsql.sql"
     util.write(sqlpath, sqlstr)
     replaced_spl = test_case._replace_sql(sqlpath, replace)
@@ -101,7 +103,9 @@ SELECT
         ),
     ],
 )
-def test_replace_sql_err(msg: str, sqlstr: str, replace: dict[str, str], tmp_path: Path) -> None:
+def test_replace_sql_err(
+    msg: str, sqlstr: str, replace: dict[str, str], tmp_path: Path
+) -> None:
     sqlpath = tmp_path / "tdsql.sql"
     util.write(sqlpath, sqlstr)
 

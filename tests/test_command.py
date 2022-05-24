@@ -29,7 +29,9 @@ max_bytes_billed: '1024 ** 3'
         ),
     ],
 )
-def test_detect_test_config(yamlstr: str, expected: TdsqlTestConfig, tmp_path: Path) -> None:
+def test_detect_test_config(
+    yamlstr: str, expected: TdsqlTestConfig, tmp_path: Path
+) -> None:
     yamlpath = tmp_path / "tdsql.yaml"
     util.write(yamlpath, yamlstr)
 
