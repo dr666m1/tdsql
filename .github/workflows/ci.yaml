@@ -85,7 +85,7 @@ jobs:
           path: ./dist
 
       - name: publish
-        run: poetry publish -r testpypi --username dr666m1 --password "$PYPI_PASSWORD"
+        run: poetry publish --username dr666m1 --password "$PYPI_PASSWORD"
         if: ${{ github.ref_type == 'tag' }}
         env:
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}

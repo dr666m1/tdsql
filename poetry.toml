@@ -1,6 +1,0 @@
-# If you wonder what is poetry.toml
-# see https://github.com/python-poetry/poetry/issues/2937
-
-[repositories]
-[repositories.testpypi]
-url = "https://test.pypi.org/legacy/"
