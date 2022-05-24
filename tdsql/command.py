@@ -81,7 +81,7 @@ def run(yamlpath: Path) -> None:
             fail_count += 1
 
     for err in errors:
-        logger.exception(err)
+        logger.error(err)
 
     logger.info(f"{pass_count} tests passed, {fail_count} tests failed")
 
@@ -213,11 +213,11 @@ def _compare_results(test: TdsqlTestCase, config: TdsqlTestConfig) -> None:
 
     if test.actual_sql_result.shape[0] > test.expected_sql_result.shape[0]:
         raise TdsqlAssertionError(
-            "{t.sqlpath}_{id_}: actual result is longer than expected result"
+            f"{test.sqlpath}_{test.id}: actual result is longer than expected result"
         )
     elif test.actual_sql_result.shape[0] < test.expected_sql_result.shape[0]:
         raise TdsqlAssertionError(
-            "{t.sqlpath}_{id_}: expected result is longer than actual result"
+            f"{test.sqlpath}_{test.id}: expected result is longer than actual result"
         )
 
 
