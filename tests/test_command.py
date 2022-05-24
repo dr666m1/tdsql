@@ -3,14 +3,14 @@ from pathlib import Path
 import pytest
 
 from tdsql.test_config import TdsqlTestConfig
-from tdsql.exception import TdsqlAssertionError
+from tdsql.exception import InvalidInputError, TdsqlAssertionError
 from tdsql import command
 from tdsql import util
 from tdsql import client
 
 
 @pytest.mark.parametrize(
-    "yamlstr,expected",
+    "yamlstr,expected,parent_config",
     [
         (
             # minimum
@@ -18,6 +18,7 @@ from tdsql import client
 database: bigquery
 """,
             TdsqlTestConfig(database="bigquery"),
+            None,
         ),
         (
             # arithmetic operation
@@ -26,16 +27,28 @@ database: bigquery
 max_bytes_billed: '1024 ** 3'
 """,
             TdsqlTestConfig(database="bigquery", max_bytes_billed=1024**3),
+            None,
+        ),
+        (
+            # inheritance
+            """
+database: bigquery
+""",
+            TdsqlTestConfig(database="bigquery", max_bytes_billed=0),
+            TdsqlTestConfig(database="foo", max_bytes_billed=0),
         ),
     ],
 )
 def test_detect_test_config(
-    yamlstr: str, expected: TdsqlTestConfig, tmp_path: Path
+    yamlstr: str,
+    expected: TdsqlTestConfig,
+    parent_config: TdsqlTestConfig,
+    tmp_path: Path,
 ) -> None:
     yamlpath = tmp_path / "tdsql.yaml"
     util.write(yamlpath, yamlstr)
 
-    actual = command._detect_test_config(yamlpath)
+    actual = command._detect_test_config(yamlpath, parent_config)
     assert actual == expected
 
 
@@ -247,43 +260,71 @@ def test_compare_results(msg: str, yamlstr: str, sqlstr: str, tmp_path: Path) ->
             command._compare_results(t, test_config)
 
 
-def test_descendant_yamlpath(tmp_path: Path) -> None:
-    root = Path(tmp_path)
-    util.write(
-        root / "tdsql.yaml",
-        """
-source: ./childs/child1.yaml
-""",
-    )
-
-    childs = root / "childs"
-    childs.mkdir()
-
-    util.write(
-        childs / "child1.yaml",
-        """
+@pytest.mark.parametrize(
+    "files,expected",
+    [
+        ({"tdsql.yaml": "database: foo"}, ["tdsql.yaml"]),
+        (
+            {
+                "tdsql.yaml": "database: foo\nsource: ./childs/child1.yaml",
+                "childs/child1.yaml": """
 source:
   - ./child2.yaml
   - child3.yml
 """,
-    )
-    util.write(
-        childs / "child2.yaml",
-        """
-source:
-""",
-    )
-    util.write(
-        childs / "child3.yml",
-        """
-foo: bar
-""",
-    )
-    actual = set(command._detect_descendant_yamlpath(root / "tdsql.yaml"))
-    expected = {
-        (childs / "child1.yaml").resolve(),
-        (childs / "child2.yaml").resolve(),
-        (childs / "child3.yml").resolve(),
-    }
+                "childs/child2.yaml": "source:",
+                "childs/child3.yml": "foo: bar",
+            },
+            [
+                "tdsql.yaml",
+                "childs/child1.yaml",
+                "childs/child2.yaml",
+                "childs/child3.yml",
+            ],
+        ),
+        # glob
+        (
+            {
+                "tdsql.yaml": "database: foo\nsource: '*.yaml'",
+                "child1.yaml": "foo: bar",
+                "child2.yaml": "foo: bar",
+            },
+            [
+                "tdsql.yaml",
+                "child1.yaml",
+                "child2.yaml",
+            ],
+        ),
+    ],
+)
+def test_parse_root_yaml(
+    files: dict[str, str], expected: list[str], tmp_path: Path
+) -> None:
+    for k, v in files.items():
+        util.write(tmp_path / k, v)
 
-    assert actual == expected
+    test_config_cases = command._parse_root_yaml(tmp_path / "tdsql.yaml")
+    actual_set = {yaml_ for yaml_ in test_config_cases.keys()}
+    expected_set = {(tmp_path / yaml_).resolve() for yaml_ in expected}
+
+    assert actual_set == expected_set
+
+
+@pytest.mark.parametrize(
+    "msg,files",
+    [
+        (
+            "detected circular reference",
+            {
+                "tdsql.yaml": """database: foo\nsource: ./childs/child1.yaml""",
+                "childs/child1.yaml": "source: ../tdsql.yaml",
+            },
+        ),
+    ],
+)
+def test_parse_root_yaml_err(msg: str, files: dict[str, str], tmp_path: Path) -> None:
+    for k, v in files.items():
+        util.write(tmp_path / k, v)
+
+    with pytest.raises(InvalidInputError, match=msg):
+        command._parse_root_yaml(tmp_path / "tdsql.yaml")

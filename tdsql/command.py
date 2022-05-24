@@ -1,7 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor, Future
 from dataclasses import fields
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Final, Literal
+import glob
 import shutil
 import sys
 
@@ -10,13 +11,15 @@ import pandas as pd
 
 from tdsql.test_config import TdsqlTestConfig
 from tdsql.test_case import TdsqlTestCase
-from tdsql.exception import TdsqlAssertionError, TdsqlInternalError
+from tdsql.exception import InvalidInputError, TdsqlAssertionError, TdsqlInternalError
 from tdsql.logger import logger
 from tdsql import client
 from tdsql import util
 
 
 TestConfigCases = dict[Path, tuple[TdsqlTestConfig, list[TdsqlTestCase]]]
+
+LOG_DIR_NAME: Final[str] = ".tdsql_log"
 
 
 def main() -> None:
@@ -39,10 +42,12 @@ def run(yamlpath: Path) -> None:
     test_config_cases = _parse_root_yaml(yamlpath)
 
     for y in test_config_cases.keys():
-        _clear_result_dir(y.parent)
+        _clear_log_dir(y.parent)
 
     # exec query
-    with ThreadPoolExecutor(max_workers=test_config_cases[yamlpath][0].max_threads) as pool:
+    with ThreadPoolExecutor(
+        max_workers=test_config_cases[yamlpath][0].max_threads
+    ) as pool:
         futures: dict[
             tuple[int, Literal["actual", "expected"]], Future[pd.DataFrame]
         ] = {}
@@ -59,7 +64,7 @@ def run(yamlpath: Path) -> None:
 
         for yaml_, (config, tests) in test_config_cases.items():
             for t in tests:
-                result_dir = _make_result_dir(yaml_.parent)
+                result_dir = _make_log_dir(yaml_.parent)
 
                 try:
                     actual = futures[(t.id, "actual")].result()
@@ -103,14 +108,18 @@ def run(yamlpath: Path) -> None:
         sys.exit(1)
 
 
-def _detect_test_config(yamlpath: Path) -> TdsqlTestConfig:
+def _detect_test_config(
+    yamlpath: Path, parent_config: TdsqlTestConfig | None = None
+) -> TdsqlTestConfig:
     yamldict = yaml.safe_load(util.read(yamlpath))
     kwargs: dict[str, Any] = {}
 
     for f in fields(TdsqlTestConfig):
         val = yamldict.get(f.name)
         if val is None:
-            pass
+            if parent_config is None:
+                continue
+            kwargs[f.name] = getattr(parent_config, f.name)
 
         elif f.type == type(val):
             kwargs[f.name] = val
@@ -130,7 +139,9 @@ def _detect_test_cases(yamlpath: Path) -> list[TdsqlTestCase]:
 
     return [
         TdsqlTestCase(
-            yamlpath.parent / t["filepath"], t.get("replace", {}), t["expected"]
+            (yamlpath.parent / t["filepath"]).resolve(),
+            t.get("replace", {}),
+            t["expected"],
         )
         for t in tests
     ]
@@ -235,15 +246,14 @@ def _compare_results(test: TdsqlTestCase, config: TdsqlTestConfig) -> None:
         )
 
 
-def _make_result_dir(dir_: Path) -> Path:
-    result_dir = dir_ / ".tdsql_log"
-    result_dir.mkdir(exist_ok=True)
+def _make_log_dir(dir_: Path) -> Path:
+    result_dir = dir_ / LOG_DIR_NAME
     util.write(result_dir / ".gitignore", "# created by tdsql\n*")
     return result_dir
 
 
-def _clear_result_dir(dir_: Path) -> None:
-    result_dir = dir_ / ".tdsql_log"
+def _clear_log_dir(dir_: Path) -> None:
+    result_dir = dir_ / LOG_DIR_NAME
     shutil.rmtree(result_dir)
 
 
@@ -271,23 +281,45 @@ def _is_equal(actual: Any, expected: Any, acceptable_error: float) -> bool:
 
 def _parse_root_yaml(root_yaml: Path) -> TestConfigCases:
     result: TestConfigCases = {
-        root_yaml: (_detect_test_config(root_yaml), _detect_test_cases(root_yaml))
+        root_yaml.resolve(): (
+            _detect_test_config(root_yaml),
+            _detect_test_cases(root_yaml),
+        )
     }
 
     def _parse_yaml(yaml_: Path) -> None:
-        # TODO support glob
         yamldict = yaml.safe_load(util.read(yaml_))
-        childs = yamldict.get("source", [])
+        raw_childs = yamldict.get("source", [])
 
-        if childs is None:
+        if raw_childs is None:
             return
-        if not isinstance(childs, list):
-            childs = [childs]
+        if not isinstance(raw_childs, list):
+            raw_childs = [raw_childs]
 
-        childs = [(yaml_.parent / c).resolve() for c in childs]
-        for c in childs:
-            result[c] = (_detect_test_config(c), _detect_test_cases(c))
-            _parse_yaml(c)
+        expanded_childs = []
+        for rc in raw_childs:
+            if not isinstance(rc, str):
+                raise InvalidInputError(f"{yaml_}: expected str but got {rc}")
 
-    _parse_yaml(root_yaml)
+            matches = glob.glob(rc, root_dir=yaml_.parent)
+            if len(matches) == 0:
+                logger.warning(f"{yaml_}: {rc} was not found")
+            expanded_childs.extend([Path(m) for m in matches])
+
+        expanded_childs = [
+            (yaml_.parent / ec).resolve()
+            for ec in expanded_childs
+            if (yaml_.parent / ec).resolve() != yaml_.resolve()
+        ]
+        for ec in expanded_childs:
+            if result.get(ec) is not None:
+                raise InvalidInputError(f"{yaml_}: detected circular reference")
+
+            result[ec] = (
+                _detect_test_config(ec, result[yaml_][0]),
+                _detect_test_cases(ec),
+            )
+            _parse_yaml(ec)
+
+    _parse_yaml(root_yaml.resolve())
     return result

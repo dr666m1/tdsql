@@ -8,5 +8,4 @@ class TdsqlTestConfig:
     auto_sort: bool = True
     acceptable_error: float = 1.0e-3
     ignore_column_name: bool = False
-    save_result: bool = True
     max_threads: int = 4
