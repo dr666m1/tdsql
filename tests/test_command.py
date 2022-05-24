@@ -1,6 +1,4 @@
 from pathlib import Path
-import py
-import tempfile
 
 import pytest
 
@@ -31,13 +29,12 @@ max_bytes_billed: '1024 ** 3'
         ),
     ],
 )
-def test_detect_test_config(yamlstr: str, expected: TdsqlTestConfig) -> None:
-    with tempfile.NamedTemporaryFile(mode="w") as f:
-        f.write(yamlstr)
-        f.seek(0)
+def test_detect_test_config(yamlstr: str, expected: TdsqlTestConfig, tmp_path: Path) -> None:
+    yamlpath = tmp_path / "tdsql.yaml"
+    util.write(yamlpath, yamlstr)
 
-        actual = command._detect_test_config(Path(f.name))
-        assert actual == expected
+    actual = command._detect_test_config(yamlpath)
+    assert actual == expected
 
 
 @pytest.mark.parametrize(
@@ -223,34 +220,33 @@ SELECT 1 AS col
         ),
     ],
 )
-def test_compare_results(msg: str, yamlstr: str, sqlstr: str) -> None:
-    with tempfile.TemporaryDirectory() as dirname:
-        yamlpath = Path(dirname) / "tdsql.yaml"
-        sqlpath = Path(dirname) / "tdsql.sql"
+def test_compare_results(msg: str, yamlstr: str, sqlstr: str, tmp_path: Path) -> None:
+    yamlpath = Path(tmp_path) / "tdsql.yaml"
+    sqlpath = Path(tmp_path) / "tdsql.sql"
 
-        util.write(yamlpath, yamlstr)
-        util.write(sqlpath, sqlstr)
+    util.write(yamlpath, yamlstr)
+    util.write(sqlpath, sqlstr)
 
-        test_config = command._detect_test_config(yamlpath)
-        test_cases = command._detect_test_cases(yamlpath)
-        client_ = client.get_client(test_config.database)
+    test_config = command._detect_test_config(yamlpath)
+    test_cases = command._detect_test_cases(yamlpath)
+    client_ = client.get_client(test_config.database)
 
-        with pytest.raises(TdsqlAssertionError, match=msg):
-            for t in test_cases:
-                try:
-                    t.actual_sql_result = client_.select(t.actual_sql, test_config)
-                except Exception as e:
-                    t.actual_sql_result = e
-                try:
-                    t.expected_sql_result = client_.select(t.expected_sql, test_config)
-                except Exception as e:
-                    t.expected_sql_result = e
+    with pytest.raises(TdsqlAssertionError, match=msg):
+        for t in test_cases:
+            try:
+                t.actual_sql_result = client_.select(t.actual_sql, test_config)
+            except Exception as e:
+                t.actual_sql_result = e
+            try:
+                t.expected_sql_result = client_.select(t.expected_sql, test_config)
+            except Exception as e:
+                t.expected_sql_result = e
 
-                command._compare_results(t, test_config)
+            command._compare_results(t, test_config)
 
 
-def test_descendant_yamlpath(tmpdir: py.path.local) -> None:
-    root = Path(tmpdir)
+def test_descendant_yamlpath(tmp_path: Path) -> None:
+    root = Path(tmp_path)
     util.write(
         root / "tdsql.yaml",
         """

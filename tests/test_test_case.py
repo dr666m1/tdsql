@@ -1,13 +1,13 @@
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 import pytest
 
 from tdsql import test_case
+from tdsql import util
 from tdsql.exception import InvalidInputError
 
 
 @pytest.mark.parametrize(
-    "sql,replace,expected",
+    "sqlstr,replace,expected",
     [
         ("SELECT 1 -- tdsql-line: test", {"test": "SELECT 2"}, "SELECT 2"),
         (
@@ -39,17 +39,16 @@ SELECT 1
         ),
     ],
 )
-def test_replace_sql(sql: str, replace: dict[str, str], expected: str) -> None:
-    with NamedTemporaryFile(mode="w") as f:
-        f.write(sql)
-        f.seek(0)
-        replaced_spl = test_case._replace_sql(Path(f.name), replace)
+def test_replace_sql(sqlstr: str, replace: dict[str, str], expected: str, tmp_path: Path) -> None:
+    sqlpath = tmp_path / "tdsql.sql"
+    util.write(sqlpath, sqlstr)
+    replaced_spl = test_case._replace_sql(sqlpath, replace)
 
     assert replaced_spl == expected
 
 
 @pytest.mark.parametrize(
-    "msg,sql,replace",
+    "msg,sqlstr,replace",
     [
         (
             r"`test` appear twice at line 4",
@@ -102,10 +101,9 @@ SELECT
         ),
     ],
 )
-def test_replace_sql_err(msg: str, sql: str, replace: dict[str, str]) -> None:
-    with NamedTemporaryFile(mode="w") as f:
-        f.write(sql)
-        f.seek(0)
+def test_replace_sql_err(msg: str, sqlstr: str, replace: dict[str, str], tmp_path: Path) -> None:
+    sqlpath = tmp_path / "tdsql.sql"
+    util.write(sqlpath, sqlstr)
 
-        with pytest.raises(InvalidInputError, match=msg):
-            test_case._replace_sql(Path(f.name), replace)
+    with pytest.raises(InvalidInputError, match=msg):
+        test_case._replace_sql(sqlpath, replace)
