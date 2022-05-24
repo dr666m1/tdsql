@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor, Future
 from dataclasses import fields
 from pathlib import Path
 from typing import Any, Literal
-import os
+import shutil
 import sys
 
 import yaml
@@ -33,52 +33,70 @@ def main() -> None:
 
 
 def run(yamlpath: Path) -> None:
-    test_config = _detect_test_config(yamlpath)
-    test_cases = _detect_test_cases(yamlpath)
-    client_ = client.get_client(test_config)
-    result_dir = _make_result_dir(yamlpath.parent)
+    yamlpaths = _detect_descendant_yamlpath(yamlpath)
+    yamlpaths.append(yamlpath)
+
+    yamlpath2config: dict[Path, TdsqlTestConfig] = {}
+    yamlpath2tests: dict[Path, list[TdsqlTestCase]] = {}
+
+    for y in yamlpaths:
+        yamlpath2config[y] = _detect_test_config(y)
+        yamlpath2tests[y] = _detect_test_cases(y)
+        _clear_result_dir(y.parent)
 
     # exec query
-    with ThreadPoolExecutor(max_workers=test_config.max_threads) as pool:
+    with ThreadPoolExecutor(max_workers=yamlpath2config[yamlpath].max_threads) as pool:
         futures: dict[
             tuple[int, Literal["actual", "expected"]], Future[pd.DataFrame]
         ] = {}
 
-        for t in test_cases:
-            futures[(t.id, "actual")] = pool.submit(client_.select, t.actual_sql)
-            futures[(t.id, "expected")] = pool.submit(client_.select, t.expected_sql)
-
-        for t in test_cases:
-            try:
-                actual = futures[(t.id, "actual")].result()
-                actual.to_csv(
-                    result_dir / f"{t.sqlpath.stem}_{t.id}_actual.csv", index=False
+        for y in yamlpaths:
+            for t in yamlpath2tests[y]:
+                config = yamlpath2config[y]
+                client_ = client.get_client(config.database)
+                futures[(t.id, "actual")] = pool.submit(
+                    client_.select, t.actual_sql, config
                 )
-                t.actual_sql_result = actual
-            except Exception as e:
-                t.actual_sql_result = e
-
-            try:
-                expected = futures[(t.id, "expected")].result()
-                expected.to_csv(
-                    result_dir / f"{t.sqlpath.stem}_{t.id}_expected.csv", index=False
+                futures[(t.id, "expected")] = pool.submit(
+                    client_.select, t.expected_sql, config
                 )
-                t.expected_sql_result = expected
-            except Exception as e:
-                t.expected_sql_result = e
+
+        for y in yamlpaths:
+            for t in yamlpath2tests[y]:
+                result_dir = _make_result_dir(y.parent)
+
+                try:
+                    actual = futures[(t.id, "actual")].result()
+                    actual.to_csv(
+                        result_dir / f"{t.sqlpath.stem}_{t.id}_actual.csv", index=False
+                    )
+                    t.actual_sql_result = actual
+                except Exception as e:
+                    t.actual_sql_result = e
+
+                try:
+                    expected = futures[(t.id, "expected")].result()
+                    expected.to_csv(
+                        result_dir / f"{t.sqlpath.stem}_{t.id}_expected.csv",
+                        index=False,
+                    )
+                    t.expected_sql_result = expected
+                except Exception as e:
+                    t.expected_sql_result = e
 
     # compare results
     pass_count = 0
     fail_count = 0
     errors: list[TdsqlAssertionError] = []
 
-    for t in test_cases:
-        try:
-            _compare_results(t, test_config)
-            pass_count += 1
-        except TdsqlAssertionError as e:
-            errors.append(e)
-            fail_count += 1
+    for y in yamlpaths:
+        for t in yamlpath2tests[y]:
+            try:
+                _compare_results(t, yamlpath2config[y])
+                pass_count += 1
+            except TdsqlAssertionError as e:
+                errors.append(e)
+                fail_count += 1
 
     for err in errors:
         logger.error(err)
@@ -120,6 +138,29 @@ def _detect_test_cases(yamlpath: Path) -> list[TdsqlTestCase]:
         )
         for t in tests
     ]
+
+
+def _detect_descendant_yamlpath(yamlpath: Path) -> list[Path]:
+    # TODO support glob
+    yamldict = yaml.safe_load(util.read(yamlpath))
+    childs = yamldict.get("source", [])
+
+    if childs is None:
+        return []
+
+    if not isinstance(childs, list):
+        childs = [childs]
+
+    childs = [(yamlpath.parent / c).resolve() for c in childs]
+
+    if len(childs) == 0:
+        return []
+
+    res: list[Path] = childs
+    for c in childs:
+        res.extend(_detect_descendant_yamlpath(c))
+
+    return res
 
 
 def _compare_results(test: TdsqlTestCase, config: TdsqlTestConfig) -> None:
@@ -223,9 +264,14 @@ def _compare_results(test: TdsqlTestCase, config: TdsqlTestConfig) -> None:
 
 def _make_result_dir(dir_: Path) -> Path:
     result_dir = dir_ / ".tdsql_log"
-    os.makedirs(result_dir, exist_ok=True)
+    result_dir.mkdir(exist_ok=True)
     util.write(result_dir / ".gitignore", "# created by tdsql\n*")
     return result_dir
+
+
+def _clear_result_dir(dir_: Path) -> None:
+    result_dir = dir_ / ".tdsql_log"
+    shutil.rmtree(result_dir)
 
 
 def _is_equal(actual: Any, expected: Any, acceptable_error: float) -> bool:

@@ -1,4 +1,5 @@
 from pathlib import Path
+import py
 import tempfile
 
 import pytest
@@ -232,17 +233,59 @@ def test_compare_results(msg: str, yamlstr: str, sqlstr: str) -> None:
 
         test_config = command._detect_test_config(yamlpath)
         test_cases = command._detect_test_cases(yamlpath)
-        client_ = client.get_client(test_config)
+        client_ = client.get_client(test_config.database)
 
         with pytest.raises(TdsqlAssertionError, match=msg):
             for t in test_cases:
                 try:
-                    t.actual_sql_result = client_.select(t.actual_sql)
+                    t.actual_sql_result = client_.select(t.actual_sql, test_config)
                 except Exception as e:
                     t.actual_sql_result = e
                 try:
-                    t.expected_sql_result = client_.select(t.expected_sql)
+                    t.expected_sql_result = client_.select(t.expected_sql, test_config)
                 except Exception as e:
                     t.expected_sql_result = e
 
                 command._compare_results(t, test_config)
+
+
+def test_descendant_yamlpath(tmpdir: py.path.local) -> None:
+    root = Path(tmpdir)
+    util.write(
+        root / "tdsql.yaml",
+        """
+source: ./childs/child1.yaml
+""",
+    )
+
+    childs = root / "childs"
+    childs.mkdir()
+
+    util.write(
+        childs / "child1.yaml",
+        """
+source:
+  - ./child2.yaml
+  - child3.yml
+""",
+    )
+    util.write(
+        childs / "child2.yaml",
+        """
+source:
+""",
+    )
+    util.write(
+        childs / "child3.yml",
+        """
+foo: bar
+""",
+    )
+    actual = set(command._detect_descendant_yamlpath(root / "tdsql.yaml"))
+    expected = {
+        (childs / "child1.yaml").resolve(),
+        (childs / "child2.yaml").resolve(),
+        (childs / "child3.yml").resolve(),
+    }
+
+    assert actual == expected

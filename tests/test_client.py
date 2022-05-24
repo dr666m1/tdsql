@@ -9,7 +9,7 @@ from tdsql.test_config import TdsqlTestConfig
     ["bigquery"],
 )
 def test_select(database: str) -> None:
-    client_ = client.get_client(TdsqlTestConfig(database=database))
-    df = client_.select("SELECT 1 AS i;")
+    client_ = client.get_client(database=database)
+    df = client_.select("SELECT 1 AS i;", TdsqlTestConfig(database=database))
 
     assert df["i"].values[0] == 1
