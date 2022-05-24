@@ -1,5 +1,7 @@
 # Test Driven SQL
-WIP
+Tdsql is a minimum test flamework for sql.
+You can replace any part of sql and check if the result is as expected.
+You can define test cases as yaml file.
 
 ## Install
 Currently, only bigquery is supported.
@@ -69,3 +71,9 @@ you won't see any error message this time.
 ```
 
 Quite simple, isn't it?
+
+## Examples
+Heavily documented sample codes are [here](./sample).
+
+## Feedback
+If you find any bugs, please feel free to create an issue.
