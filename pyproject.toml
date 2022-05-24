@@ -1,8 +1,9 @@
 [tool.poetry]
 name = "tdsql"
-version = "0.0.2"
+version = "0.0.3"
 description = "Minimum test flamework for sql"
 authors = ["dr666m1 <skndr666m1@gmail.com>"]
+readme = "README.md"
 
 [tool.poetry.scripts]
 tdsql = "tdsql.command:main"
