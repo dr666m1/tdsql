@@ -255,7 +255,7 @@ def _make_log_dir(dir_: Path) -> Path:
 
 def _clear_log_dir(dir_: Path) -> None:
     result_dir = dir_ / LOG_DIR_NAME
-    shutil.rmtree(result_dir)
+    shutil.rmtree(result_dir, ignore_errors=True)
 
 
 def _is_equal(actual: Any, expected: Any, acceptable_error: float) -> bool:
