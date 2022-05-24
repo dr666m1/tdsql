@@ -1,0 +1,12 @@
+# Configurations are inherited from `tdsql.yaml`.
+
+# You can override config
+ignore_column_name: false
+
+tests:
+  - filepath: ./hello-world.sql
+    replace:
+      data: SELECT 1
+      master: FROM (SELECT 1 AS id, 2 AS category)
+      main: SELECT 1
+    expected: SELECT 1

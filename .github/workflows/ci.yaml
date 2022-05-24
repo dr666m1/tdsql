@@ -58,6 +58,11 @@ jobs:
           source .venv/bin/activate
           pytest
 
+      - name: run sample
+        working-directory: ./sample
+        run: |
+          source ../.venv/bin/activate
+          tdsql
 
   deploy:
     runs-on: ubuntu-latest

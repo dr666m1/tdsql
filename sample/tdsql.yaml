@@ -1,0 +1,70 @@
+# Do not change the file name.
+# Make sure that this file is in current working directory.
+
+# Currently, only bigquery is supported.
+database: bigquery
+
+# Maximum bytes to be billed for a single query job (default 1 GiB).
+# If you pass a string, it is converted to integer by `eval()`.
+max_bytes_billed: '1024**3'
+
+# If true, actual result and expected result will be
+# sorted before they are compared (default true).
+auto_sort: true
+
+# By default (0.001) the difference
+# between 1000.0 and 1001.0 is not detected.
+# This configuration is only applied when comparing float.
+acceptable_error: 0.001
+
+# If true, the column names of actual results and expected results
+# do not have to match (default false).
+ignore_column_name: false
+
+# If this value is greater than 1,
+# queries are executed concurrently (default 4).
+max_threads: 4
+
+tests:
+  # Use relative path from this file.
+  - filepath: ./hello-world.sql
+    replace: &common
+      data: |
+        SELECT * FROM UNNEST([
+          STRUCT('2020-01-01' AS dt, 100 AS id),
+          STRUCT('2020-01-01', 100),
+          STRUCT('2020-01-01', 200)
+        ])
+      master: |
+        FROM (
+          SELECT 100 AS id, 1 AS category
+        )
+    expected: |
+      SELECT * FROM UNNEST([
+        STRUCT('2020-01-01' AS dt, 1 AS category, 2 AS cnt),
+        STRUCT('2020-01-01', NULL, 1)
+      ])
+
+  - filepath: ./hello-world.sql
+    replace:
+      # Anchor and merge keys are available.
+      <<: *common
+      # `-- tdsql-line: this` represents original sql.
+      # In this case, it is replaced with main block.
+      main: |
+        SELECT COUNT(*) AS null_cnt
+        FROM (
+          -- tdsql-line: this
+        )
+        WHERE dt IS NULL
+    expected: SELECT 0 AS null_cnt
+
+# You don't have to write all test cases in this file.
+# If you have other test files, specify the paths as follows.
+# Configurations are inherited from this file
+# but you can override them in each file.
+source:
+  # Use relative path from this file.
+  - ./sub.yaml
+  # Glob pattern is also available.
+  - ./glob/*.yaml

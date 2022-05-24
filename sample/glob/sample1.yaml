@@ -1,0 +1,8 @@
+# Configurations are inherited from `tdsql.yaml`.
+
+tests:
+  # Use relative path from this file (not from `tdsql.yaml`).
+  - filepath: ./sample1.sql
+    replace:
+      main: SELECT 0 AS zero
+    expected: SELECT 0 AS zero
