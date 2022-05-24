@@ -39,6 +39,7 @@ def main() -> None:
 
 
 def run(yamlpath: Path) -> None:
+    yamlpath = yamlpath.resolve()
     test_config_cases = _parse_root_yaml(yamlpath)
 
     for y in test_config_cases.keys():
@@ -280,8 +281,9 @@ def _is_equal(actual: Any, expected: Any, acceptable_error: float) -> bool:
 
 
 def _parse_root_yaml(root_yaml: Path) -> TestConfigCases:
+    root_yaml = root_yaml.resolve()
     result: TestConfigCases = {
-        root_yaml.resolve(): (
+        root_yaml: (
             _detect_test_config(root_yaml),
             _detect_test_cases(root_yaml),
         )
@@ -309,7 +311,7 @@ def _parse_root_yaml(root_yaml: Path) -> TestConfigCases:
         expanded_childs = [
             (yaml_.parent / ec).resolve()
             for ec in expanded_childs
-            if (yaml_.parent / ec).resolve() != yaml_.resolve()
+            if (yaml_.parent / ec).resolve() != yaml_
         ]
         for ec in expanded_childs:
             if result.get(ec) is not None:
@@ -321,5 +323,5 @@ def _parse_root_yaml(root_yaml: Path) -> TestConfigCases:
             )
             _parse_yaml(ec)
 
-    _parse_yaml(root_yaml.resolve())
+    _parse_yaml(root_yaml)
     return result
