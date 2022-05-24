@@ -16,6 +16,9 @@ from tdsql import client
 from tdsql import util
 
 
+TestConfigCases = dict[Path, tuple[TdsqlTestConfig, list[TdsqlTestCase]]]
+
+
 def main() -> None:
     # TODO parse command line arguments
     yamlpath = Path("tdsql.yaml")
@@ -33,26 +36,19 @@ def main() -> None:
 
 
 def run(yamlpath: Path) -> None:
-    yamlpaths = _detect_descendant_yamlpath(yamlpath)
-    yamlpaths.append(yamlpath)
+    test_config_cases = _parse_root_yaml(yamlpath)
 
-    yamlpath2config: dict[Path, TdsqlTestConfig] = {}
-    yamlpath2tests: dict[Path, list[TdsqlTestCase]] = {}
-
-    for y in yamlpaths:
-        yamlpath2config[y] = _detect_test_config(y)
-        yamlpath2tests[y] = _detect_test_cases(y)
+    for y in test_config_cases.keys():
         _clear_result_dir(y.parent)
 
     # exec query
-    with ThreadPoolExecutor(max_workers=yamlpath2config[yamlpath].max_threads) as pool:
+    with ThreadPoolExecutor(max_workers=test_config_cases[yamlpath][0].max_threads) as pool:
         futures: dict[
             tuple[int, Literal["actual", "expected"]], Future[pd.DataFrame]
         ] = {}
 
-        for y in yamlpaths:
-            for t in yamlpath2tests[y]:
-                config = yamlpath2config[y]
+        for config, tests in test_config_cases.values():
+            for t in tests:
                 client_ = client.get_client(config.database)
                 futures[(t.id, "actual")] = pool.submit(
                     client_.select, t.actual_sql, config
@@ -61,9 +57,9 @@ def run(yamlpath: Path) -> None:
                     client_.select, t.expected_sql, config
                 )
 
-        for y in yamlpaths:
-            for t in yamlpath2tests[y]:
-                result_dir = _make_result_dir(y.parent)
+        for yaml_, (config, tests) in test_config_cases.items():
+            for t in tests:
+                result_dir = _make_result_dir(yaml_.parent)
 
                 try:
                     actual = futures[(t.id, "actual")].result()
@@ -89,10 +85,10 @@ def run(yamlpath: Path) -> None:
     fail_count = 0
     errors: list[TdsqlAssertionError] = []
 
-    for y in yamlpaths:
-        for t in yamlpath2tests[y]:
+    for config, tests in test_config_cases.values():
+        for t in tests:
             try:
-                _compare_results(t, yamlpath2config[y])
+                _compare_results(t, config)
                 pass_count += 1
             except TdsqlAssertionError as e:
                 errors.append(e)
@@ -138,29 +134,6 @@ def _detect_test_cases(yamlpath: Path) -> list[TdsqlTestCase]:
         )
         for t in tests
     ]
-
-
-def _detect_descendant_yamlpath(yamlpath: Path) -> list[Path]:
-    # TODO support glob
-    yamldict = yaml.safe_load(util.read(yamlpath))
-    childs = yamldict.get("source", [])
-
-    if childs is None:
-        return []
-
-    if not isinstance(childs, list):
-        childs = [childs]
-
-    childs = [(yamlpath.parent / c).resolve() for c in childs]
-
-    if len(childs) == 0:
-        return []
-
-    res: list[Path] = childs
-    for c in childs:
-        res.extend(_detect_descendant_yamlpath(c))
-
-    return res
 
 
 def _compare_results(test: TdsqlTestCase, config: TdsqlTestConfig) -> None:
@@ -294,3 +267,27 @@ def _is_equal(actual: Any, expected: Any, acceptable_error: float) -> bool:
         res = actual == expected
 
     return res
+
+
+def _parse_root_yaml(root_yaml: Path) -> TestConfigCases:
+    result: TestConfigCases = {
+        root_yaml: (_detect_test_config(root_yaml), _detect_test_cases(root_yaml))
+    }
+
+    def _parse_yaml(yaml_: Path) -> None:
+        # TODO support glob
+        yamldict = yaml.safe_load(util.read(yaml_))
+        childs = yamldict.get("source", [])
+
+        if childs is None:
+            return
+        if not isinstance(childs, list):
+            childs = [childs]
+
+        childs = [(yaml_.parent / c).resolve() for c in childs]
+        for c in childs:
+            result[c] = (_detect_test_config(c), _detect_test_cases(c))
+            _parse_yaml(c)
+
+    _parse_yaml(root_yaml)
+    return result
