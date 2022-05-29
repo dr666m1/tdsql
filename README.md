@@ -7,7 +7,7 @@ You can define test cases as yaml file.
 Currently, only bigquery is supported.
 
 ```bash
-pip install tdsql[bigquery]
+pip install 'tdsql[bigquery]'
 ```
 
 ## Authentication
