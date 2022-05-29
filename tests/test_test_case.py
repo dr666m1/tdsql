@@ -37,6 +37,18 @@ SELECT 1
 ;
 """.strip(),
         ),
+        (
+            """
+SELECT 1 UNION ALL
+SELECT 2 UNION ALL
+SELECT 3
+""".strip(),
+            {"2,3": "SELECT 4"},
+            """
+SELECT 1 UNION ALL
+SELECT 4
+""".strip(),
+        ),
     ],
 )
 def test_replace_sql(

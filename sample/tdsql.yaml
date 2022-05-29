@@ -28,17 +28,17 @@ max_threads: 4
 tests:
   # Use relative path from this file.
   - filepath: ./hello-world.sql
-    replace: &common
+
+    replace:
       data: |
         SELECT * FROM UNNEST([
           STRUCT('2020-01-01' AS dt, 100 AS id),
           STRUCT('2020-01-01', 100),
           STRUCT('2020-01-01', 200)
         ])
-      master: |
-        FROM (
-          SELECT 100 AS id, 1 AS category
-        )
+
+      master: &master FROM (SELECT 100 AS id, 1 AS category)
+
     expected: |
       SELECT * FROM UNNEST([
         STRUCT('2020-01-01' AS dt, 1 AS category, 2 AS cnt),
@@ -46,9 +46,19 @@ tests:
       ])
 
   - filepath: ./hello-world.sql
+
     replace:
+      # You can also specify replaced range by row number
+      '6,9': |
+        SELECT * FROM UNNEST([
+          STRUCT('2020-01-01' AS dt, 100 AS id),
+          STRUCT('2020-01-01', 100),
+          STRUCT('2020-01-01', 200)
+        ])
+
       # Anchor and merge keys are available.
-      <<: *common
+      master: *master
+
       # `-- tdsql-line: this` represents original sql.
       # In this case, it is replaced with main block.
       main: |
@@ -57,6 +67,7 @@ tests:
           -- tdsql-line: this
         )
         WHERE dt IS NULL
+
     expected: SELECT 0 AS null_cnt
 
 # You don't have to write all test cases in this file.

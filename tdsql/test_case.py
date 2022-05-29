@@ -26,9 +26,11 @@ class TdsqlTestCase:
         self.id: int = self.__class__.cnt
 
 
-oneline_pattern = re.compile(r"^.*--\s*tdsql-line:\s*(\S+)\s*$")
-start_pattern = re.compile(r"^.*--\s*tdsql-start:\s*(\S+)\s*$")
-end_pattern = re.compile(r"^.*--\s*tdsql-end:\s*(\S+)\s*$")
+oneline_comment_pattern = re.compile(r"^.*--\s*tdsql-line:\s*([a-zA-Z]\w+)\s*$")
+start_comment_pattern = re.compile(r"^.*--\s*tdsql-start:\s*([a-zA-Z]\w+)\s*$")
+end_comment_pattern = re.compile(r"^.*--\s*tdsql-end:\s*([a-zA-Z]\w+)\s*$")
+
+range_ident_pattern = re.compile(r"^([0-9]+),([0-9]+)$")
 
 
 def _replace_sql(sqlpath: Path, replace: dict[str, str]) -> str:
@@ -38,7 +40,7 @@ def _replace_sql(sqlpath: Path, replace: dict[str, str]) -> str:
     # check where to replace
     position: dict[str, tuple[int, int]] = {}
     for i, l in enumerate(original_sql_lines):
-        match_ = oneline_pattern.match(l)
+        match_ = oneline_comment_pattern.match(l)
         if match_ is not None:
             ident = match_.group(1)
             if position.get(ident) is not None:
@@ -48,7 +50,7 @@ def _replace_sql(sqlpath: Path, replace: dict[str, str]) -> str:
             position[ident] = (i, i)
             continue
 
-        match_ = start_pattern.match(l)
+        match_ = start_comment_pattern.match(l)
         if match_ is not None:
             ident = match_.group(1)
             if position.get(ident) is not None:
@@ -58,7 +60,7 @@ def _replace_sql(sqlpath: Path, replace: dict[str, str]) -> str:
             position[ident] = (i, -1)
             continue
 
-        match_ = end_pattern.match(l)
+        match_ = end_comment_pattern.match(l)
         if match_ is not None:
             ident = match_.group(1)
             if position.get(ident) is None:
@@ -79,7 +81,11 @@ def _replace_sql(sqlpath: Path, replace: dict[str, str]) -> str:
     collision_check: set[int] = set()
 
     for ident, text in replace.items():
-        if ident not in position.keys():
+        match_ = range_ident_pattern.match(ident)
+        if match_ is not None:
+            # convert 1-based row number into 0-based index
+            position[ident] = (int(match_.group(1)) - 1, int(match_.group(2)) - 1)
+        elif ident not in position.keys():
             raise InvalidInputError(f"{sqlpath}: `{ident}` does not appear")
 
         for i in range(position[ident][0], position[ident][1] + 1):
@@ -90,13 +96,13 @@ def _replace_sql(sqlpath: Path, replace: dict[str, str]) -> str:
 
         text_lines = text.splitlines()
         for i, l in enumerate(text_lines):
-            match_ = oneline_pattern.match(l)
+            match_ = oneline_comment_pattern.match(l)
             if match_ is None:
                 continue
             if match_.group(1) == "this":
-                f, t = position[ident]
+                s, e = position[ident]
                 text = "\n".join(
-                    text_lines[:i] + original_sql_lines[f : t + 1] + text_lines[i + 1 :]
+                    text_lines[:i] + original_sql_lines[s : e + 1] + text_lines[i + 1 :]
                 )
             else:
                 raise InvalidInputError(
