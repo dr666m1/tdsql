@@ -4,12 +4,12 @@ import pandas as pd
 from tdsql.client.base import BaseClient
 from tdsql.test_config import TdsqlTestConfig
 
+# See https://googleapis.dev/python/google-api-core/latest/auth.html#authentication # noqa
 _CLIENT = bigquery.Client()
 
 
 class BigQueryClient(BaseClient):
     def __init__(self) -> None:
-        # See https://googleapis.dev/python/google-api-core/latest/auth.html#authentication # noqa
         self.client = _CLIENT
 
     def select(self, sql: str, config: TdsqlTestConfig) -> pd.DataFrame:

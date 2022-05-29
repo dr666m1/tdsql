@@ -10,6 +10,16 @@ Currently, only bigquery is supported.
 pip install tdsql[bigquery]
 ```
 
+## Authentication
+Run either of these commands.
+
+```bash
+gcloud auth application-default login
+
+# If you want to use service account
+# export GOOGLE_APPLICATION_CREDENTIALS=/path/to/keyfile.json
+```
+
 ## Quick start
 Save these files in your working directory.
 
