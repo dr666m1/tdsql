@@ -43,7 +43,7 @@ def run(yamlpath: Path) -> None:
     test_config_cases = _parse_root_yaml(yamlpath)
 
     for y in test_config_cases.keys():
-        _clear_log_dir(y.parent)
+        _make_log_dir(y.parent)
 
     # exec query
     with ThreadPoolExecutor(
@@ -65,21 +65,28 @@ def run(yamlpath: Path) -> None:
 
         for yaml_, (config, tests) in test_config_cases.items():
             for t in tests:
-                result_dir = _make_log_dir(yaml_.parent)
+                log_dir = yaml_.parent / LOG_DIR_NAME
 
                 try:
+                    util.write(
+                        log_dir / f"{t.sqlpath.stem}_{t.id}_actual.sql", t.actual_sql
+                    )
                     actual = futures[(t.id, "actual")].result()
                     actual.to_csv(
-                        result_dir / f"{t.sqlpath.stem}_{t.id}_actual.csv", index=False
+                        log_dir / f"{t.sqlpath.stem}_{t.id}_actual.csv", index=False
                     )
                     t.actual_sql_result = actual
                 except Exception as e:
                     t.actual_sql_result = e
 
                 try:
+                    util.write(
+                        log_dir / f"{t.sqlpath.stem}_{t.id}_expected.sql",
+                        t.expected_sql,
+                    )
                     expected = futures[(t.id, "expected")].result()
                     expected.to_csv(
-                        result_dir / f"{t.sqlpath.stem}_{t.id}_expected.csv",
+                        log_dir / f"{t.sqlpath.stem}_{t.id}_expected.csv",
                         index=False,
                     )
                     t.expected_sql_result = expected
@@ -249,13 +256,9 @@ def _compare_results(test: TdsqlTestCase, config: TdsqlTestConfig) -> None:
 
 def _make_log_dir(dir_: Path) -> Path:
     result_dir = dir_ / LOG_DIR_NAME
+    shutil.rmtree(result_dir, ignore_errors=True)
     util.write(result_dir / ".gitignore", "# created by tdsql\n*")
     return result_dir
-
-
-def _clear_log_dir(dir_: Path) -> None:
-    result_dir = dir_ / LOG_DIR_NAME
-    shutil.rmtree(result_dir, ignore_errors=True)
 
 
 def _is_equal(actual: Any, expected: Any, acceptable_error: float) -> bool:
